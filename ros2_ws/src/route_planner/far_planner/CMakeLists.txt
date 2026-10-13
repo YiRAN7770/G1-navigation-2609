@@ -15,7 +15,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(nlohmann_json REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -84,7 +83,5 @@ install(DIRECTORY rviz DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
 install(DIRECTORY data DESTINATION share/${PROJECT_NAME})
-
-target_link_libraries(${PROJECT_NAME} nlohmann_json::nlohmann_json)
 
 ament_package()

@@ -93,9 +93,6 @@ def _launch_setup(context):
             },
             config_file,
             robot_config_file,
-            {'twoWayDrive': two_way_drive.lower() == 'true',
-             'reverseMaxGoalDistance': float(LaunchConfiguration('reverseMaxGoalDistance').perform(context)),
-             'useFinalGoalPose': LaunchConfiguration('useFinalGoalPose').perform(context).lower() == 'true'},
         ]
     )
 
@@ -109,13 +106,10 @@ def _launch_setup(context):
             {
                 'useGoalYaw': LaunchConfiguration('useGoalYaw').perform(context).lower() == 'true',
                 'useFinalGoalPose': LaunchConfiguration('useFinalGoalPose').perform(context).lower() == 'true',
-                'goalUseRawOdometry': LaunchConfiguration('goalUseRawOdometry').perform(context).lower() == 'true',
                 'goalRequireLocalizationReady': LaunchConfiguration('goalRequireLocalizationReady').perform(context).lower() == 'true',
-                'goalAlignmentEnterDistance': float(LaunchConfiguration('goalAlignmentEnterDistance').perform(context)),
                 'goalPositionTolerance': float(LaunchConfiguration('goalPositionTolerance').perform(context)),
                 'goalAlignmentExitFrames': int(LaunchConfiguration('goalAlignmentExitFrames').perform(context)),
                 'goalAlignmentExitDistance': float(LaunchConfiguration('goalAlignmentExitDistance').perform(context)),
-                'goalYawControlTolerance': float(LaunchConfiguration('goalYawControlTolerance').perform(context)),
                 'goalYawTolerance': float(LaunchConfiguration('goalYawTolerance').perform(context)),
                 'goalConfirmFrames': int(LaunchConfiguration('goalConfirmFrames').perform(context)),
                 'goalStoppedLinearSpeed': float(LaunchConfiguration('goalStoppedLinearSpeed').perform(context)),
@@ -140,10 +134,6 @@ def _launch_setup(context):
             },
             config_file,
             robot_config_file,
-            {'twoWayDrive': two_way_drive.lower() == 'true',
-             'reverseMaxGoalDistance': float(LaunchConfiguration('reverseMaxGoalDistance').perform(context)),
-             'goalStoppedLinearSpeed': float(LaunchConfiguration('goalStoppedLinearSpeed').perform(context)),
-             'useFinalGoalPose': LaunchConfiguration('useFinalGoalPose').perform(context).lower() == 'true'},
         ]
     )
 
@@ -188,17 +178,13 @@ def generate_launch_description():
         DeclareLaunchArgument('requireGoal', default_value='false'),
         DeclareLaunchArgument('useGoalYaw', default_value='true'),
         DeclareLaunchArgument('useFinalGoalPose', default_value='false'),
-        DeclareLaunchArgument('goalUseRawOdometry', default_value='false'),
         DeclareLaunchArgument('goalRequireLocalizationReady', default_value='false'),
         DeclareLaunchArgument('goalPositionTolerance', default_value='0.10'),
-        DeclareLaunchArgument('goalAlignmentEnterDistance', default_value='0.10'),
         DeclareLaunchArgument('goalAlignmentExitFrames', default_value='3'),
         DeclareLaunchArgument('goalAlignmentExitDistance', default_value='0.15'),
         DeclareLaunchArgument('goalYawTolerance', default_value='0.3490658503988659'),
-        DeclareLaunchArgument('goalYawControlTolerance', default_value='0.3490658503988659'),
         DeclareLaunchArgument('goalConfirmFrames', default_value='3'),
-        DeclareLaunchArgument('goalStoppedLinearSpeed', default_value='0.05'),
-        DeclareLaunchArgument('reverseMaxGoalDistance', default_value='0.2'),
+        DeclareLaunchArgument('goalStoppedLinearSpeed', default_value='0.03'),
         DeclareLaunchArgument('goalStoppedAngularSpeed', default_value='0.05'),
         DeclareLaunchArgument(
             'config',

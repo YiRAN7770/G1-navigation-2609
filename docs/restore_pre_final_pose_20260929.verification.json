@@ -1,0 +1,32 @@
+{
+  "checked_files": 24,
+  "original_exact_backup_files": 12,
+  "release_exact_backup_files": 10,
+  "release_packaging_adaptations": 2,
+  "python_and_xml_parse": "passed",
+  "historical_logic_checks": "passed",
+  "builds": {
+    "local_planner": "clean rebuild passed",
+    "far_planner": "rebuild passed",
+    "vehicle_simulator": "unchanged binary build passed; colcon install wait interrupted"
+  },
+  "colcon_attempt": "Interrupted after vehicle_simulator installation stopped making progress; direct CMake builds completed afterwards.",
+  "robot_motion_tests": "not run",
+  "map_checksums": "PCD and VGH passed",
+  "diff_check": "Four historical trailing-whitespace lines retained for exact restoration",
+  "binaries": {
+    "local_planner/localPlanner": {
+      "sha256": "4dd6e043868927e09005c8b0440c799b66b59f14054975faff83f8bbcacc4fe6",
+      "bytes": 13472664
+    },
+    "local_planner/pathFollower": {
+      "sha256": "cd029a09b2517b7daaf3117fb50caac60f9857ae2638e031bd971194f8fc87a1",
+      "bytes": 14537360
+    },
+    "far_planner/far_planner": {
+      "sha256": "95816071bc3f9fc775ecd29bcecf73571ecb92049588e721b6169dbd387370f3",
+      "bytes": 4132400
+    }
+  },
+  "launch_show_args": "passed; no nodes started"
+}

@@ -1,0 +1,98 @@
+[
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/base_autonomy/local_planner/CMakeLists.txt",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/CMakeLists.txt",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/base_autonomy/local_planner/CMakeLists.txt",
+    "backup_sha256": "ac9a73e44de667c579dcdcf32fe43dfa95b2ae7b2318dddb3edb65d6d69f4285",
+    "release_sha256": "ac9a73e44de667c579dcdcf32fe43dfa95b2ae7b2318dddb3edb65d6d69f4285",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/base_autonomy/local_planner/launch/local_planner.launch.py",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/launch/local_planner.launch.py",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/base_autonomy/local_planner/launch/local_planner.launch.py",
+    "backup_sha256": "deb2dd840a1a0840664bdcc7c9c50d4cef3e23403f75bcf149c9be4a49cd309d",
+    "release_sha256": "deb2dd840a1a0840664bdcc7c9c50d4cef3e23403f75bcf149c9be4a49cd309d",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/base_autonomy/local_planner/package.xml",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/package.xml",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/base_autonomy/local_planner/package.xml",
+    "backup_sha256": "6440b1d0e37015061be03049426362283a85d284e60023b95104dec18d651ead",
+    "release_sha256": "6440b1d0e37015061be03049426362283a85d284e60023b95104dec18d651ead",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/base_autonomy/local_planner/src/localPlanner.cpp",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/src/localPlanner.cpp",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/base_autonomy/local_planner/src/localPlanner.cpp",
+    "backup_sha256": "6b8c1df8e6f3b1e39e95f24776980519c48bc4aa86a8dd99b5689fd308f6edb6",
+    "release_sha256": "6b8c1df8e6f3b1e39e95f24776980519c48bc4aa86a8dd99b5689fd308f6edb6",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/base_autonomy/local_planner/src/pathFollower.cpp",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/src/pathFollower.cpp",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/base_autonomy/local_planner/src/pathFollower.cpp",
+    "backup_sha256": "58638e12a442a68a9925e3c713213dd4e6dde310e3c221ca087c13d8c5b41dff",
+    "release_sha256": "58638e12a442a68a9925e3c713213dd4e6dde310e3c221ca087c13d8c5b41dff",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/base_autonomy/vehicle_simulator/launch/system_real_robot_with_fastlio_far.launch.py",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/vehicle_simulator/launch/system_real_robot_with_fastlio_far.launch.py",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/base_autonomy/vehicle_simulator/launch/system_real_robot_with_fastlio_far.launch.py",
+    "backup_sha256": "4eeadec60ca23d6b82029720977048edcf15530b16c8492dc193f8a074bcc889",
+    "release_sha256": "b75e7bbabe0d25e2e31eba5b45fa4ac5cfc5772b9421814d1c27f3ca02ad0ca5",
+    "portability_adjustment": true
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/route_planner/far_planner/CMakeLists.txt",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/route_planner/far_planner/CMakeLists.txt",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/route_planner/far_planner/CMakeLists.txt",
+    "backup_sha256": "573632580b06b176baf8ba9a62b4d9f673241ca1de7ee124f2b799822bdaa50c",
+    "release_sha256": "573632580b06b176baf8ba9a62b4d9f673241ca1de7ee124f2b799822bdaa50c",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/route_planner/far_planner/include/far_planner/far_planner.h",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/route_planner/far_planner/include/far_planner/far_planner.h",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/route_planner/far_planner/include/far_planner/far_planner.h",
+    "backup_sha256": "ef775435e59966e13b7c632cc892003008073bbf60860ec4ff68c495d74867ae",
+    "release_sha256": "ef775435e59966e13b7c632cc892003008073bbf60860ec4ff68c495d74867ae",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/route_planner/far_planner/include/far_planner/graph_planner.h",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/route_planner/far_planner/include/far_planner/graph_planner.h",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/route_planner/far_planner/include/far_planner/graph_planner.h",
+    "backup_sha256": "45868004264260f15f2ad29acf2a8b978570f3b3aca948ed540b8f0827614e8d",
+    "release_sha256": "45868004264260f15f2ad29acf2a8b978570f3b3aca948ed540b8f0827614e8d",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/route_planner/far_planner/package.xml",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/route_planner/far_planner/package.xml",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/route_planner/far_planner/package.xml",
+    "backup_sha256": "f5cc00fa6b804daa19798d11cd28370fb229e1165aaed5c53bd6ffd4bbef9472",
+    "release_sha256": "8108ed85bb77a19b79577c9febc48eacd45092ff8be40bed10265cdfea0b9092",
+    "portability_adjustment": true
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/route_planner/far_planner/src/far_planner.cpp",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/route_planner/far_planner/src/far_planner.cpp",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/route_planner/far_planner/src/far_planner.cpp",
+    "backup_sha256": "8f2a7467172f1f14bc76da116e0f324b79c6a3e7d22a0f7776d881126e6c109f",
+    "release_sha256": "8f2a7467172f1f14bc76da116e0f324b79c6a3e7d22a0f7776d881126e6c109f",
+    "portability_adjustment": false
+  },
+  {
+    "backup_source": "run_logs/final_pose_contract_20260929/before/src/route_planner/far_planner/src/graph_planner.cpp",
+    "original_target": "G1-navigation/End2end-ObjectNav-Physical-Experiment-unitree_g1/src/route_planner/far_planner/src/graph_planner.cpp",
+    "release_target": "G1-navigation-2609-release/ros2_ws/src/route_planner/far_planner/src/graph_planner.cpp",
+    "backup_sha256": "e63df5395bfaadd6e2c5cd37d7e6bb102c74625d23f6ffc6c40823c523ba9add",
+    "release_sha256": "e63df5395bfaadd6e2c5cd37d7e6bb102c74625d23f6ffc6c40823c523ba9add",
+    "portability_adjustment": false
+  }
+]

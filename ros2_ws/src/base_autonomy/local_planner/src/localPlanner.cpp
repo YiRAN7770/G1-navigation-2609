@@ -5,9 +5,6 @@
 #include <chrono>
 #include <iostream>
 #include <sstream>
-#include <nlohmann/json.hpp>
-#include <stdexcept>
-#include <geometry_msgs/msg/pose_stamped.hpp>
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time.hpp"
 #include "rclcpp/clock.hpp"
@@ -55,7 +52,6 @@ double vehicleWidth = 0.6;
 double sensorOffsetX = 0;
 double sensorOffsetY = 0;
 bool twoWayDrive = true;
-double reverseMaxGoalDistance = 0.2;
 double laserVoxelSize = 0.05;
 double terrainVoxelSize = 0.2;
 bool useTerrainAnalysis = false;
@@ -101,16 +97,6 @@ double goalX = 0;
 double goalY = 0;
 bool requireGoal = false;
 bool hasGoal = false;
-bool useFinalGoalPose = false;
-bool finalGoalValid = false, finalApproach = false;
-geometry_msgs::msg::PoseStamped finalGoal;
-double finalX = 0, finalY = 0, finalYaw = 0;
-double finalApproachRange = 0.6, finalApproachExitRange = 0.8;
-double waypointRelX = 0, waypointRelY = 0, waypointAngle = 0, waypointDistance = 0;
-bool rotationClear = false;
-std::string targetSource = "far_waypoint";
-using SteadyClock = std::chrono::steady_clock;
-SteadyClock::time_point lastWaypoint, lastReplan, finalBlockedUntil;
 
 float joySpeed = 0;
 float joySpeedRaw = 0;
@@ -275,31 +261,9 @@ void joystickHandler(const sensor_msgs::msg::Joy::ConstSharedPtr joy)
 
 void goalHandler(const geometry_msgs::msg::PointStamped::ConstSharedPtr goal)
 {
-  if (goal->header.frame_id != "map" || !std::isfinite(goal->point.x) ||
-      !std::isfinite(goal->point.y)) return;
   hasGoal = true;
-  lastWaypoint = SteadyClock::now();
   goalX = goal->point.x;
   goalY = goal->point.y;
-}
-
-void finalGoalHandler(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
-{
-  if (!useFinalGoalPose) return;
-  const auto & p = msg->pose.position;
-  const auto & q = msg->pose.orientation;
-  finalGoalValid = false;
-  hasGoal = false;
-  if (msg->header.frame_id != "map" || !std::isfinite(p.x) || !std::isfinite(p.y) ||
-      !std::isfinite(p.z) || !std::isfinite(q.x) || !std::isfinite(q.y) ||
-      !std::isfinite(q.z) || !std::isfinite(q.w) ||
-      q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w < 1e-12) return;
-  finalGoal = *msg;
-  finalX = p.x; finalY = p.y;
-  tf2::Quaternion quat(q.x,q.y,q.z,q.w); quat.normalize();
-  double r,pitch; tf2::Matrix3x3(quat).getRPY(r,pitch,finalYaw);
-  finalGoalValid = true;
-  finalApproach = false;
 }
 
 void speedHandler(const std_msgs::msg::Float32::ConstSharedPtr speed)
@@ -549,13 +513,6 @@ void readCorrespondences()
   fclose(filePtr);
 }
 
-bool reverseAllowed()
-{
-  // Distance to the original inspection PoseStamped, not the local waypoint.
-  return twoWayDrive && (!autonomyMode || !useFinalGoalPose ||
-    (finalGoalValid && hypot(finalX - vehicleX, finalY - vehicleY) <= reverseMaxGoalDistance));
-}
-
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
@@ -567,7 +524,6 @@ int main(int argc, char** argv)
   nh->declare_parameter<double>("sensorOffsetX", sensorOffsetX);
   nh->declare_parameter<double>("sensorOffsetY", sensorOffsetY);
   nh->declare_parameter<bool>("twoWayDrive", twoWayDrive);
-  nh->declare_parameter<double>("reverseMaxGoalDistance", reverseMaxGoalDistance);
   nh->declare_parameter<double>("laserVoxelSize", laserVoxelSize);
   nh->declare_parameter<double>("terrainVoxelSize", terrainVoxelSize);
   nh->declare_parameter<bool>("useTerrainAnalysis", useTerrainAnalysis);
@@ -606,9 +562,6 @@ int main(int argc, char** argv)
   nh->declare_parameter<double>("goalClearRange", goalClearRange);
   nh->declare_parameter<double>("goalBehindRange", goalBehindRange);
   nh->declare_parameter<double>("goalX", goalX);
-  nh->declare_parameter<bool>("useFinalGoalPose", useFinalGoalPose);
-  nh->declare_parameter<double>("finalApproachRange", finalApproachRange);
-  nh->declare_parameter<double>("finalApproachExitRange", finalApproachExitRange);
   nh->declare_parameter<bool>("requireGoal", requireGoal);
   nh->declare_parameter<double>("goalY", goalY);
 
@@ -618,9 +571,6 @@ int main(int argc, char** argv)
   nh->get_parameter("sensorOffsetX", sensorOffsetX);
   nh->get_parameter("sensorOffsetY", sensorOffsetY);
   nh->get_parameter("twoWayDrive", twoWayDrive);
-  nh->get_parameter("reverseMaxGoalDistance", reverseMaxGoalDistance);
-  if (!std::isfinite(reverseMaxGoalDistance) || reverseMaxGoalDistance < 0)
-    throw std::invalid_argument("reverseMaxGoalDistance must be finite and nonnegative");
   nh->get_parameter("laserVoxelSize", laserVoxelSize);
   nh->get_parameter("terrainVoxelSize", terrainVoxelSize);
   nh->get_parameter("useTerrainAnalysis", useTerrainAnalysis);
@@ -659,11 +609,6 @@ int main(int argc, char** argv)
   nh->get_parameter("goalClearRange", goalClearRange);
   nh->get_parameter("goalBehindRange", goalBehindRange);
   nh->get_parameter("goalX", goalX);
-  nh->get_parameter("useFinalGoalPose", useFinalGoalPose);
-  nh->get_parameter("finalApproachRange", finalApproachRange);
-  nh->get_parameter("finalApproachExitRange", finalApproachExitRange);
-  if (!(finalApproachRange > 0 && finalApproachExitRange > finalApproachRange))
-    throw std::invalid_argument("Invalid final approach handoff ranges");
   nh->get_parameter("requireGoal", requireGoal);
   nh->get_parameter("goalY", goalY);
 
@@ -676,10 +621,6 @@ int main(int argc, char** argv)
   auto subJoystick = nh->create_subscription<sensor_msgs::msg::Joy>("/joy", 5, joystickHandler);
 
   auto subGoal = nh->create_subscription<geometry_msgs::msg::PointStamped> ("/way_point", 5, goalHandler);
-  auto subFinalGoal = nh->create_subscription<geometry_msgs::msg::PoseStamped>("/goal_pose", 5, finalGoalHandler);
-  auto subLegacyGoal = nh->create_subscription<geometry_msgs::msg::PointStamped>("/goal_point", 5,
-    [](const geometry_msgs::msg::PointStamped::ConstSharedPtr) { finalGoalValid=false; finalApproach=false; });
-  auto pubReplan = nh->create_publisher<geometry_msgs::msg::PoseStamped>("/far_planner/replan", 5);
 
   auto subSpeed = nh->create_subscription<std_msgs::msg::Float32>("/speed", 5, speedHandler);
 
@@ -697,30 +638,20 @@ int main(int argc, char** argv)
   auto pubPlannerStatus = nh->create_publisher<std_msgs::msg::String>("/local_planner/status", 5);
   std::string previousPlannerReason;
   auto publishPlannerStatus = [&](const std::string & reason, int selectedGroup) {
-    nlohmann::json out = {{"reason",reason},{"path_points",path.poses.size()},
-      {"terrain_points",terrainCloud->size()},{"filtered_obstacle_points",plannerCloudCrop->size()},
-      {"selected_group",selectedGroup},{"waypoint_distance",waypointDistance},
-      {"waypoint_relative_x",waypointRelX},{"waypoint_relative_y",waypointRelY},
-      {"waypoint_angle",waypointAngle},{"target_source",targetSource},
-      {"final_goal_valid",finalGoalValid},{"final_distance",hypot(finalX-vehicleX,finalY-vehicleY)},
-      {"goal_stamp_ns",std::to_string(rclcpp::Time(finalGoal.header.stamp).nanoseconds())},
-      {"target_x",finalX},{"target_y",finalY},{"target_yaw",finalYaw},
-      {"rotation_clear",rotationClear},{"two_way_drive",twoWayDrive},
-      {"reverse_allowed",reverseAllowed()},{"reverse_max_goal_distance",reverseMaxGoalDistance},
-      {"freeze_status",freezeStatus},{"check_obstacle",checkObstacle}};
+    std::ostringstream out;
+    out << "{\"reason\":\"" << reason << "\",\"path_points\":" << path.poses.size()
+        << ",\"terrain_points\":" << terrainCloud->size()
+        << ",\"filtered_obstacle_points\":" << plannerCloudCrop->size()
+        << ",\"selected_group\":" << selectedGroup
+        << ",\"waypoint_distance\":" << hypot(goalX - vehicleX, goalY - vehicleY)
+        << ",\"freeze_status\":" << freezeStatus
+        << ",\"check_obstacle\":" << (checkObstacle ? "true" : "false") << "}";
     std_msgs::msg::String status;
-    status.data = out.dump();
+    status.data = out.str();
     pubPlannerStatus->publish(status);
     if (reason != previousPlannerReason) {
       RCLCPP_INFO(nh->get_logger(), "Local planner: %s", status.data.c_str());
       previousPlannerReason = reason;
-    }
-    if (finalGoalValid && (reason != "path_available") &&
-        (lastReplan == SteadyClock::time_point{} ||
-         std::chrono::duration<double>(SteadyClock::now()-lastReplan).count() >= 1.0)) {
-      // Replan the same goal without resetting the follower's final state.
-      pubReplan->publish(finalGoal);
-      lastReplan = SteadyClock::now();
     }
   };
   #if PLOTPATHSET == 1
@@ -848,47 +779,24 @@ int main(int argc, char** argv)
       }
 
       float pathRange = adjacentRange;
-      rotationClear = true;
-      const double rotationRadius = hypot(vehicleLength, vehicleWidth)/2.0 + 0.05;
-      for (const auto & p : plannerCloudCrop->points) {
-        if (hypot(p.x,p.y) <= rotationRadius &&
-            (!useTerrainAnalysis || p.intensity > obstacleHeightThre)) rotationClear = false;
-      }
-      if (finalGoalValid) {
-        const double finalDistance = hypot(finalX-vehicleX,finalY-vehicleY);
-        if (!finalApproach && finalDistance <= finalApproachRange) finalApproach = true;
-        else if (finalApproach && finalDistance > finalApproachExitRange) finalApproach = false;
-      }
-      const bool directFinal = finalGoalValid && finalApproach && SteadyClock::now() >= finalBlockedUntil;
-      const bool waypointFresh = hasGoal && (lastWaypoint != SteadyClock::time_point{}) &&
-        std::chrono::duration<double>(SteadyClock::now()-lastWaypoint).count() <= 1.0;
-      const bool waitingForRoute = finalGoalValid && !directFinal && !waypointFresh;
-      targetSource = directFinal ? "final_pose" : "far_waypoint";
       if (pathRangeBySpeed) pathRange = adjacentRange * joySpeed;
       if (pathRange < minPathRange) pathRange = minPathRange;
       float relativeGoalDis = adjacentRange;
 
-      const bool allowReverse = reverseAllowed();
-      const bool forwardOnlyPose = autonomyMode && useFinalGoalPose && !allowReverse;
       int preSelectedGroupID = -1;
       if (autonomyMode) {
-        const double targetX = directFinal ? finalX : goalX;
-        const double targetY = directFinal ? finalY : goalY;
-        float relativeGoalX = ((targetX - vehicleX) * cosVehicleYaw + (targetY - vehicleY) * sinVehicleYaw);
-        float relativeGoalY = (-(targetX - vehicleX) * sinVehicleYaw + (targetY - vehicleY) * cosVehicleYaw);
+        float relativeGoalX = ((goalX - vehicleX) * cosVehicleYaw + (goalY - vehicleY) * sinVehicleYaw);
+        float relativeGoalY = (-(goalX - vehicleX) * sinVehicleYaw + (goalY - vehicleY) * cosVehicleYaw);
 
         relativeGoalDis = sqrt(relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
         joyDir = atan2(relativeGoalY, relativeGoalX) * 180 / PI;
-        waypointRelX=relativeGoalX; waypointRelY=relativeGoalY;
-        waypointDistance=relativeGoalDis; waypointAngle=joyDir*PI/180;
         
-        if (!twoWayDrive && !useFinalGoalPose && !finalGoalValid && fabs(joyDir) > freezeAng && relativeGoalDis < goalBehindRange) {
+        if (fabs(joyDir) > freezeAng && relativeGoalDis < goalBehindRange) {
           relativeGoalDis = 0;
           joyDir = 0;
         }
         
-        if (twoWayDrive || useFinalGoalPose) freezeStatus = 0;
-        else if (fabs(joyDir) > freezeAng && freezeStatus == 0) {
+        if (fabs(joyDir) > freezeAng && freezeStatus == 0) {
           freezeStartTime = odomTime;
           freezeStatus = 1;
         } else if (odomTime - freezeStartTime > freezeTime && freezeStatus == 1) {
@@ -897,11 +805,7 @@ int main(int argc, char** argv)
           freezeStatus = 0;
         }
 
-        if (forwardOnlyPose) {
-          // Steer toward a behind target using forward candidates. Do not use
-          // the legacy unchecked preselected group or freeze-to-zero branch.
-          joyDir = std::max(-90.0f, std::min(90.0f, joyDir));
-        } else if (!twoWayDrive) {
+        if (!twoWayDrive) {
           if (joyDir > 95.0) {
             joyDir = 95.0;
             preSelectedGroupID = 0;
@@ -1032,14 +936,6 @@ int main(int argc, char** argv)
           }
         }
 
-        auto forwardGroup = [&](int group, double angle) {
-          if (!forwardOnlyPose) return true;
-          for (const auto & p : startPaths[group]->points) {
-            if (hypot(p.x, p.y) > std::min(pathRange, relativeGoalDis) / pathScale) break;
-            if (cos(angle) * p.x - sin(angle) * p.y < -1e-6) return false;
-          }
-          return true;
-        };
         int selectedGroupID = -1;
         if (preSelectedGroupID >= 0) {
           selectedGroupID = preSelectedGroupID;
@@ -1050,8 +946,8 @@ int main(int argc, char** argv)
             float rotAng = (10.0 * rotDir - 180.0) * PI / 180;
             float rotDeg = 10.0 * rotDir;
             if (rotDeg > 180.0) rotDeg -= 360.0;
-            if (forwardGroup(i % groupNum, rotAng) && maxScore < clearPathPerGroupScore[i] && ((rotAng * 180.0 / PI > minObsAngCW && rotAng * 180.0 / PI < minObsAngCCW) ||
-                (rotDeg > minObsAngCW && rotDeg < minObsAngCCW && allowReverse) || !checkRotObstacle)) {
+            if (maxScore < clearPathPerGroupScore[i] && ((rotAng * 180.0 / PI > minObsAngCW && rotAng * 180.0 / PI < minObsAngCCW) || 
+                (rotDeg > minObsAngCW && rotDeg < minObsAngCCW && twoWayDrive) || !checkRotObstacle)) {
               maxScore = clearPathPerGroupScore[i];
               selectedGroupID = i;
             }
@@ -1095,7 +991,7 @@ int main(int argc, char** argv)
             }
           }
 
-          if (autonomyMode && ((requireGoal && !hasGoal && !directFinal) || waitingForRoute)) {
+          if (autonomyMode && requireGoal && !hasGoal) {
             // Preserve free-path visualization while waiting for the first
             // planner waypoint; do not drive toward the default map origin.
             path.poses.resize(1);
@@ -1106,8 +1002,7 @@ int main(int argc, char** argv)
           path.header.stamp = rclcpp::Time(static_cast<uint64_t>(odomTime * 1e9));
           path.header.frame_id = "vehicle";
           pubPath->publish(path);
-          publishPlannerStatus(waitingForRoute ? "replanning_wait_for_far" :
-            autonomyMode && requireGoal && !hasGoal && !directFinal ? "waiting_for_waypoint" :
+          publishPlannerStatus(autonomyMode && requireGoal && !hasGoal ? "waiting_for_waypoint" :
             relativeGoalDis == 0 && freezeStatus == 1 ? "heading_freeze" :
             relativeGoalDis == 0 ? "waypoint_at_or_behind_robot" :
             path.poses.size() <= 1 ? "cropped_path_stop" : "path_available", selectedGroupID);
@@ -1125,12 +1020,12 @@ int main(int argc, char** argv)
             }
             if ((angDiff > dirThre && !dirToVehicle) || (fabs(10.0 * rotDir - 180.0) > dirThre && fabs(joyDir) <= 90.0 && dirToVehicle) ||
                 ((10.0 * rotDir > dirThre && 360.0 - 10.0 * rotDir > dirThre) && fabs(joyDir) > 90.0 && dirToVehicle) || 
-                !((rotAng * 180.0 / PI > minObsAngCW && rotAng * 180.0 / PI < minObsAngCCW) ||
-                (rotDeg > minObsAngCW && rotDeg < minObsAngCCW && allowReverse) || !checkRotObstacle)) {
+                !((rotAng * 180.0 / PI > minObsAngCW && rotAng * 180.0 / PI < minObsAngCCW) || 
+                (rotDeg > minObsAngCW && rotDeg < minObsAngCCW && twoWayDrive) || !checkRotObstacle)) {
               continue;
             }
 
-            if (forwardGroup(pathList[i % pathNum], rotAng) && clearPathList[i] < pointPerPathThre) {
+            if (clearPathList[i] < pointPerPathThre) {
               int freePathLength = paths[i % pathNum]->points.size();
               for (int j = 0; j < freePathLength; j++) {
                 point = paths[i % pathNum]->points[j];
@@ -1184,7 +1079,6 @@ int main(int argc, char** argv)
         path.header.frame_id = "vehicle";
         pubPath->publish(path);
         publishPlannerStatus("no_collision_free_path", -1);
-        if (directFinal) finalBlockedUntil = SteadyClock::now() + std::chrono::seconds(2);
 
         #if PLOTPATHSET == 1
         freePaths->clear();

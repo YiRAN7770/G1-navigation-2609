@@ -133,7 +133,6 @@ def generate_launch_description():
     network_interface = LaunchConfiguration("network_interface")
     g1_loco_client_path = LaunchConfiguration("g1_loco_client_path")
     unitree_sdk_lib_path = LaunchConfiguration("unitree_sdk_lib_path")
-    enable_continuous_gait = LaunchConfiguration("enable_continuous_gait")
     max_x_speed = LaunchConfiguration("max_x_speed")
     max_y_speed = LaunchConfiguration("max_y_speed")
     max_angular_speed = LaunchConfiguration("max_angular_speed")
@@ -196,10 +195,6 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument("network_interface", default_value="eno1"),
         DeclareLaunchArgument(
-            "inspection_mode", default_value="false", choices=["true", "false"],
-            description="Route raw velocity through the inspection executor; its loss closes the command watchdog",
-        ),
-        DeclareLaunchArgument(
             "g1_loco_client_path",
             default_value=EnvironmentVariable("G1_LOCO_CLIENT_BIN", default_value=""),
         ),
@@ -207,31 +202,17 @@ def generate_launch_description():
             "unitree_sdk_lib_path",
             default_value=EnvironmentVariable("UNITREE_SDK_LIB_DIR", default_value=""),
         ),
-        DeclareLaunchArgument(
-            "enable_continuous_gait",
-            default_value="false",
-            choices=["true", "false"],
-            description=(
-                "Explicitly arm SDK2 continuous gait on a zero-to-nonzero command edge; "
-                "kept opt-in because it changes the locomotion mode API call"
-            ),
-        ),
         DeclareLaunchArgument("max_x_speed", default_value="0.20"),
         DeclareLaunchArgument("max_y_speed", default_value="0.10"),
         DeclareLaunchArgument("max_angular_speed", default_value="0.35"),
         DeclareLaunchArgument("useFinalGoalPose", default_value="true"),
-        DeclareLaunchArgument("goalUseRawOdometry", default_value="true"),
-        DeclareLaunchArgument("twoWayDrive", default_value="true"),
-        DeclareLaunchArgument("reverseMaxGoalDistance", default_value="0.2"),
         DeclareLaunchArgument("goalRequireLocalizationReady", default_value="false"),
         DeclareLaunchArgument("goalPositionTolerance", default_value="0.10"),
-        DeclareLaunchArgument("goalAlignmentEnterDistance", default_value="0.07"),
         DeclareLaunchArgument("goalAlignmentExitFrames", default_value="3"),
         DeclareLaunchArgument("goalAlignmentExitDistance", default_value="0.15"),
         DeclareLaunchArgument("goalYawTolerance", default_value="0.3490658503988659"),
-        DeclareLaunchArgument("goalYawControlTolerance", default_value="0.3141592653589793"),
         DeclareLaunchArgument("goalConfirmFrames", default_value="3"),
-        DeclareLaunchArgument("goalStoppedLinearSpeed", default_value="0.05"),
+        DeclareLaunchArgument("goalStoppedLinearSpeed", default_value="0.03"),
         DeclareLaunchArgument("goalStoppedAngularSpeed", default_value="0.05"),
         DeclareLaunchArgument(
             "fastlio_params",
@@ -359,19 +340,14 @@ def generate_launch_description():
                     # FAR/TARE publish PointStamped waypoints without yaw.
                     "useGoalYaw": "false",
                     "useFinalGoalPose": use_final_goal_pose,
-                    "goalUseRawOdometry": LaunchConfiguration("goalUseRawOdometry"),
-                    "twoWayDrive": LaunchConfiguration("twoWayDrive"),
-                    "reverseMaxGoalDistance": LaunchConfiguration("reverseMaxGoalDistance"),
                     "goalRequireLocalizationReady": PythonExpression([
                         "'", operation, "' == 'localization' or '",
                         goal_require_localization_ready, "' == 'true'"
                     ]),
                     "goalPositionTolerance": goal_position_tolerance,
-                    "goalAlignmentEnterDistance": LaunchConfiguration("goalAlignmentEnterDistance"),
                     "goalAlignmentExitFrames": goal_alignment_exit_frames,
                     "goalAlignmentExitDistance": goal_alignment_exit_distance,
                     "goalYawTolerance": goal_yaw_tolerance,
-                    "goalYawControlTolerance": LaunchConfiguration("goalYawControlTolerance"),
                     "goalConfirmFrames": goal_confirm_frames,
                     "goalStoppedLinearSpeed": goal_stopped_linear_speed,
                     "goalStoppedAngularSpeed": goal_stopped_angular_speed,
@@ -390,10 +366,7 @@ def generate_launch_description():
         name="fastlio_far_motion_gate",
         output="screen",
         parameters=[{
-            "input_topic": ParameterValue(PythonExpression([
-                "'/cmd_vel_fastlio_far_inspection' if '", LaunchConfiguration("inspection_mode"),
-                "' == 'true' else '/cmd_vel_fastlio_far_raw'",
-            ]), value_type=str),
+            "input_topic": "/cmd_vel_fastlio_far_raw",
             "path_topic": "/fastlio_far/local_path",
             "output_topic": "/cmd_vel_fastlio_far_safe",
             "enable_motion": ParameterValue(enable_motion, value_type=bool),
@@ -431,7 +404,6 @@ def generate_launch_description():
             "g1_loco_client_path": g1_loco_client_path,
             "unitree_sdk_lib_path": unitree_sdk_lib_path,
             "command_timeout": 0.2,
-            "enable_continuous_gait": ParameterValue(enable_continuous_gait, value_type=bool),
             "max_x_linear_velocity": ParameterValue(max_x_speed, value_type=float),
             "max_y_linear_velocity": ParameterValue(max_y_speed, value_type=float),
             "max_angular_velocity": ParameterValue(max_angular_speed, value_type=float),

@@ -1,4 +1,3 @@
-#include <nlohmann/json.hpp>
 /*
  * FAR Planner
  * Copyright (C) 2021 Fan Yang - All rights reserved
@@ -43,34 +42,6 @@ void FARMaster::Init() {
 
   // planning status publisher
   reach_goal_pub_     = nh_->create_publisher<std_msgs::msg::Bool>("/far_reach_goal_status", 5);
-  status_pub_ = nh_->create_publisher<std_msgs::msg::String>("/far_planner/status", 5);
-  replan_sub_ = nh_->create_subscription<geometry_msgs::msg::PoseStamped>("/far_planner/replan", 5,
-    [this](geometry_msgs::msg::PoseStamped::ConstSharedPtr g) {
-      if (pose_goal_active_ && !pose_goal_reached_ && MatchesPoseGoal(*g)) replan_requested_ = true;
-    });
-  final_status_sub_ = nh_->create_subscription<std_msgs::msg::String>("/fastlio_far/goal_status", 5,
-    [this](std_msgs::msg::String::ConstSharedPtr m) {
-      if (!pose_goal_active_ || pose_goal_reached_) return;
-      try {
-        const auto j = nlohmann::json::parse(m->data);
-        const auto& p = pose_goal_.pose.position;
-        const auto& q = pose_goal_.pose.orientation;
-        const double norm = q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w;
-        const double yaw = atan2(2*(q.w*q.z+q.x*q.y)/norm, 1-2*(q.y*q.y+q.z*q.z)/norm);
-        const double yaw_diff = j.at("target_yaw").get<double>()-yaw;
-        if (fabs(atan2(sin(yaw_diff),cos(yaw_diff))) > 1e-6) return;
-        if (j.at("goal_stamp_ns").get<std::string>() != std::to_string(rclcpp::Time(pose_goal_.header.stamp).nanoseconds()) ||
-            fabs(j.at("target_x").get<double>()-p.x)>1e-6 || fabs(j.at("target_y").get<double>()-p.y)>1e-6) return;
-        if (j.at("reached").get<bool>() && j.at("phase").get<std::string>()=="reached" &&
-            j.at("distance").get<double>() <= 0.10 && fabs(j.at("yaw_error").get<double>()) <= 0.3490658503988659) {
-          pose_goal_reached_ = true;
-          graph_planner_.CancelGoal();
-          std_msgs::msg::Bool done; done.data = true; reach_goal_pub_->publish(done);
-          PublishPoseStatus("succeeded");
-        }
-      } catch (const std::exception&) { /* malformed/stale status cannot complete a goal */ }
-    });
-
 
   // Terminal formatting subscriber
   read_command_sub_   = nh_->create_subscription<std_msgs::msg::String>("/read_file_dir", 1, std::bind(&FARMaster::ReadFileCommand, this, std::placeholders::_1));
@@ -306,19 +277,7 @@ void FARMaster::MainLoopCallBack() {
 }
 
 void FARMaster::PlanningCallBack() {
-  if (!is_init_completed_ || !is_graph_init_) {
-    if (pose_goal_active_) PublishPoseStatus("waiting_for_graph");
-    return;
-  }
-  if (pose_goal_active_ && pose_goal_reached_) { PublishPoseStatus("succeeded"); return; }
-  if (pose_goal_active_ && (replan_requested_ || graph_planner_.GetGoalNodePtr() == NULL) &&
-      std::chrono::duration<double>(std::chrono::steady_clock::now()-last_replan_).count() >= 1.0) {
-    const auto& p = pose_goal_.pose.position;
-    graph_planner_.UpdateGoal(Point3D(p.x,p.y,p.z));
-    replan_requested_ = false;
-    last_replan_ = std::chrono::steady_clock::now();
-    PublishPoseStatus("replanning");
-  }
+  if (!is_init_completed_ || !is_graph_init_) return;
   const NavNodePtr goal_ptr = graph_planner_.GetGoalNodePtr();
   if (goal_ptr == NULL) {
     /* Graph Traversablity Update */
@@ -356,7 +315,7 @@ void FARMaster::PlanningCallBack() {
     goal_waypoint_stamped_.header.stamp = nh_->now();
     bool is_current_free_nav = false;
     bool is_reach_goal = false;
-    if (graph_planner_.PathToGoal(goal_ptr, global_path, nav_node_ptr_, current_free_goal, is_planning_fails, is_reach_goal, is_current_free_nav, pose_goal_active_) && nav_node_ptr_ != NULL) {
+    if (graph_planner_.PathToGoal(goal_ptr, global_path, nav_node_ptr_, current_free_goal, is_planning_fails, is_reach_goal, is_current_free_nav) && nav_node_ptr_ != NULL) {
       Point3D waypoint = nav_node_ptr_->position;
       if (nav_node_ptr_ != goal_ptr) {
         waypoint = this->ProjectNavWaypoint(nav_node_ptr_, last_nav_ptr);
@@ -383,14 +342,12 @@ void FARMaster::PlanningCallBack() {
 
     // publish planner status and timers
     auto reach_goal_msg = std_msgs::msg::Bool();
-    reach_goal_msg.data = pose_goal_active_ ? pose_goal_reached_ : is_reach_goal;
-    if (pose_goal_active_) PublishPoseStatus(is_planning_fails ? "blocked_replanning" :
-      is_reach_goal ? "local_handoff" : "routing", is_reach_goal);
+    reach_goal_msg.data = is_reach_goal;
     reach_goal_pub_->publish(reach_goal_msg);
     auto traverse_timer = std_msgs::msg::Float32();
     traverse_timer.data = FARUtil::Timer.record_time("Overall_executing");
     traverse_time_pub_->publish(traverse_timer);
-    if (is_reach_goal && !pose_goal_active_) {
+    if (is_reach_goal) {
       FARUtil::Timer.end_time("Overall_executing", false);
     }
 
@@ -853,7 +810,6 @@ void FARMaster::ExtractDynamicObsFromScan(const PointCloudPtr& scanCloudIn,
 }
 
 void FARMaster::WaypointCallBack(const geometry_msgs::msg::PointStamped& route_goal) {
-  pose_goal_active_ = false; pose_goal_reached_ = false;
   if (!is_graph_init_) {
     if (FARUtil::IsDebug) RCLCPP_WARN(nh_->get_logger(),"FARMaster: wait for v-graph to init before sending any goals");
     return;
@@ -870,38 +826,22 @@ void FARMaster::WaypointCallBack(const geometry_msgs::msg::PointStamped& route_g
   planner_viz_.VizPoint3D(goal_p, "original_goal", VizColor::RED, 1.5);
 }
 
-bool FARMaster::MatchesPoseGoal(const geometry_msgs::msg::PoseStamped& g) const {
-  const auto& a=g.pose; const auto& b=pose_goal_.pose;
-  return g.header.frame_id == pose_goal_.header.frame_id &&
-    rclcpp::Time(g.header.stamp)==rclcpp::Time(pose_goal_.header.stamp) &&
-    fabs(a.position.x-b.position.x)<1e-6 && fabs(a.position.y-b.position.y)<1e-6 &&
-    fabs(a.orientation.z-b.orientation.z)<1e-6 && fabs(a.orientation.w-b.orientation.w)<1e-6;
-}
-
-void FARMaster::PublishPoseStatus(const std::string& state, bool route_converged) {
-  const auto& p=pose_goal_.pose.position;
-  nlohmann::json j={{"state",state},{"route_converged",route_converged},
-    {"final_reached",pose_goal_reached_},{"final_distance",hypot(p.x-robot_pos_.x,p.y-robot_pos_.y)},
-    {"goal_stamp_ns",std::to_string(rclcpp::Time(pose_goal_.header.stamp).nanoseconds())},
-    {"target_x",p.x},{"target_y",p.y}};
-  std_msgs::msg::String m; m.data=j.dump(); status_pub_->publish(m);
-}
-
 void FARMaster::GoalPoseCallBack(const geometry_msgs::msg::PoseStamped& goal_pose) {
-  const auto& p=goal_pose.pose.position; const auto& q=goal_pose.pose.orientation;
-  pose_goal_active_=false; pose_goal_reached_=false;
-  graph_planner_.CancelGoal();
-  if (!FARUtil::IsSameFrameID(goal_pose.header.frame_id, master_params_.world_frame) ||
-      !std::isfinite(p.x)||!std::isfinite(p.y)||!std::isfinite(p.z)||
-      !std::isfinite(q.x)||!std::isfinite(q.y)||!std::isfinite(q.z)||!std::isfinite(q.w)||
-      q.x*q.x+q.y*q.y+q.z*q.z+q.w*q.w<1e-12) {
-    RCLCPP_ERROR(nh_->get_logger(),"Rejected final pose: expected finite pose in navigation frame"); return;
+  if (!is_graph_init_) {
+    if (FARUtil::IsDebug) RCLCPP_WARN(nh_->get_logger(),"FARMaster: wait for v-graph to init before sending any goals");
+    return;
   }
-  pose_goal_=goal_pose; pose_goal_active_=true; replan_requested_=true;
-  last_replan_={};
-  std_msgs::msg::Bool done; done.data=false; reach_goal_pub_->publish(done);
+  // Extract position from PoseStamped (ignoring orientation for path planning)
+  Point3D goal_p(goal_pose.pose.position.x, goal_pose.pose.position.y, goal_pose.pose.position.z);
+  const std::string goal_frame = goal_pose.header.frame_id;
+  if (!FARUtil::IsSameFrameID(goal_frame, master_params_.world_frame)) {
+    if (FARUtil::IsDebug) RCLCPP_WARN_ONCE(nh_->get_logger(), "FARMaster: goal_pose published is not on world frame!");
+    FARUtil::TransformPoint3DFrame(goal_frame, master_params_.world_frame, tf_buffer_, goal_p);
+  }
+  graph_planner_.UpdateGoal(goal_p);
   FARUtil::Timer.start_time("Overall_executing", true);
-  PublishPoseStatus("accepted");
+  // visualize original goal
+  planner_viz_.VizPoint3D(goal_p, "original_goal", VizColor::RED, 1.5);
 }
 
 /* allocate static utility PointCloud pointer memory */
