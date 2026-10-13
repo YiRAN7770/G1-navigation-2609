@@ -1,0 +1,46 @@
+{
+  "source_directory": "not included in this release (historical source)",
+  "output_directory": "maps/site_04_nav_zup_ccw90",
+  "rotation": [
+    [
+      0,
+      -1,
+      0
+    ],
+    [
+      1,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1
+    ]
+  ],
+  "determinant": 1,
+  "yaw_offset_deg": 90,
+  "pivot_in_source_map": [
+    0,
+    0,
+    0
+  ],
+  "coordinate_rule": "x_new=-y_old; y_new=x_old; z_new=z_old; yaw_new=wrap(yaw_old+pi/2)",
+  "points": 720693,
+  "graph_nodes": {
+    "site_04.vgh": 1350,
+    "site_04_compact_trajectory.vgh": 429
+  },
+  "topology_unchanged": true,
+  "source": {
+    "prior.pcd": "2a2feec5951c0b432b7aa8b0a477f4b77040b5ecad50eb8dabeafdfb19750dc5",
+    "site_04.vgh": "6170f84d8222d8eb14c10bb2dc930dafe40c85980a144da34048a29193115e99",
+    "site_04_compact_trajectory.vgh": "3fb300dc7d52f5b89a46d6c10b07948821d0c7f9b73721e96d358d504d373a32"
+  },
+  "output": {
+    "prior.pcd": "65df91eebee9c797d1125a9d0fe14fffacff52c713c2f3480a7b8d59b95bb215",
+    "site_04.vgh": "69cf508aa2c3d9a02d5c50c5ebbc652b0189313919e4096064d9ab34d05691bd",
+    "site_04_compact_trajectory.vgh": "d6bfe5cc2f7d470fdc71b8a9bf028b62f4ea161dee69b75fd32310ad2afbec49"
+  },
+  "field_alignment_verified": false
+}

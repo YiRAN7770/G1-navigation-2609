@@ -1,0 +1,14 @@
+# Non-ROS packages used by the tracked source. Resolve ROS packages with rosdep.
+libcurl4-openssl-dev
+libeigen3-dev
+libopencv-dev
+libpcl-all-dev
+python3-numpy
+python3-matplotlib
+qtbase5-dev
+qtdeclarative5-dev
+pkg-config
+cmake
+nlohmann-json3-dev
+
+# Livox SDK2 is built from ros2_ws/src/utilities/livox_ros_driver2/Livox-SDK2.

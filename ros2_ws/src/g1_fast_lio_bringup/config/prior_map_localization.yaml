@@ -1,0 +1,43 @@
+prior_map_localizer:
+  ros__parameters:
+    cloud_topic: /cloud_registered
+    odom_topic: /Odometry
+    initial_pose_topic: /initialpose
+    map_frame: map
+    local_frame: camera_init
+    body_frame: body
+    sync_slop_sec: 0.03
+    input_timeout_sec: 0.5
+    correction_rate_hz: 0.5
+    submap_radius: 30.0
+    submap_z_radius: 8.0
+    coarse_leaf_size: 1.0
+    fine_scan_leaf_size: 0.15
+    fine_map_leaf_size: 0.25
+    coarse_max_correspondence: 3.0
+    fine_max_correspondence: 0.8
+    max_iterations: 40
+    min_scan_points: 500
+    min_target_points: 1000
+    min_overlap: 0.35
+    max_inlier_rmse: 0.35
+    max_translation_jump: 2.0
+    max_rotation_jump_deg: 25.0
+    # Optional 0/pi seed comparison at initialization only; ambiguous geometry
+    # stays not-ready. Normal tracking retains the 25 degree correction gate.
+    initial_heading_search: false
+    required_consecutive_matches: 2
+    publish_prior_map: true
+
+localization_cmd_vel_gate:
+  ros__parameters:
+    input_topic: /cmd_vel_nav
+    output_topic: /cmd_vel_safe
+    ready_topic: /localization_ready
+    lio_health_topic: /lio_health
+    require_lio_health: false
+    ready_timeout_sec: 0.5
+    lio_health_timeout_sec: 0.5
+    command_timeout_sec: 0.25
+    max_linear_speed: 0.20
+    max_angular_speed: 0.35

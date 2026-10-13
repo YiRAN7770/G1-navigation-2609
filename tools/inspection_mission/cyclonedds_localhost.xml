@@ -1,0 +1,13 @@
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain id="any">
+    <General>
+      <!-- ROS_LOCALHOST_ONLY=1 selects lo in rmw_cyclonedds_cpp itself. -->
+      <AllowMulticast>false</AllowMulticast>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>100</MaxAutoParticipantIndex>
+      <Peers><Peer address="127.0.0.1"/></Peers>
+    </Discovery>
+  </Domain>
+</CycloneDDS>

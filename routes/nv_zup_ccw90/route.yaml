@@ -1,0 +1,19 @@
+map_id: site_04_nav_zup_ccw90
+frame_id: map
+prior_pcd: ../../maps/site_04_nav_zup_ccw90/prior.pcd
+graph_vgh: ../../maps/site_04_nav_zup_ccw90/site_04_compact_trajectory.vgh
+
+# 列表顺序为预期巡检顺序；yaw 单位为弧度。
+points:
+  - id: P1
+    position: {x: 1.532753825, y: 1.732534409, z: 0.087214872}
+    yaw: -0.785832894
+  - id: P2
+    position: {x: -2.252366543, y: 5.503403187, z: 0.340523332}
+    yaw: -2.309945147
+  - id: P3
+    position: {x: -0.319568515, y: 7.233221054, z: 0.346684009}
+    yaw: 2.230265626
+  - id: P4
+    position: {x: 5.285879135, y: 5.228349209, z: 0.077980399}
+    yaw: 0.666234189

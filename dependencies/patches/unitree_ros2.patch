@@ -1,0 +1,76 @@
+diff --git a/cyclonedds_ws/src/cyclonedds.xml b/cyclonedds_ws/src/cyclonedds.xml
+index 3932e62..489d048 100755
+--- a/cyclonedds_ws/src/cyclonedds.xml
++++ b/cyclonedds_ws/src/cyclonedds.xml
+@@ -3,7 +3,7 @@
+     <Domain Id="any">
+         <General>
+             <Interfaces>
+-                <NetworkInterface name="enp2s0" priority="default" multicast="default" />
++                <NetworkInterface name="eno1" priority="default" multicast="default" />
+             </Interfaces>
+         </General>
+     </Domain>
+diff --git a/setup.sh b/setup.sh
+index 819b055..cb34748 100755
+--- a/setup.sh
++++ b/setup.sh
+@@ -1,8 +1,17 @@
+ #!/bin/bash
+ echo "Setup unitree ros2 environment"
+-source /opt/ros/foxy/setup.bash
+-source $HOME/unitree_ros2/cyclonedds_ws/install/setup.bash
++# Start from a clean ROS prefix chain.  The user's interactive shell may have
++# sourced unrelated TurtleBot/OriginBot overlays before this script is called.
++unset AMENT_PREFIX_PATH CMAKE_PREFIX_PATH COLCON_PREFIX_PATH PYTHONPATH
++unset ROS_PACKAGE_PATH COLCON_CURRENT_PREFIX
++unset LD_LIBRARY_PATH
++source /opt/ros/humble/setup.bash
++_UNITREE_ROS2_DIR="$(builtin cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
++source "${_UNITREE_ROS2_DIR}/cyclonedds_ws/install/local_setup.bash"
++unset _UNITREE_ROS2_DIR
+ export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
++export ROS_DOMAIN_ID=0
++export ROS_LOCALHOST_ONLY=0
+ export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
+-                            <NetworkInterface name="enp3s0" priority="default" multicast="default" />
++                            <NetworkInterface name="eno1" priority="default" multicast="default" />
+                         </Interfaces></General></Domain></CycloneDDS>'
+diff --git a/setup_default.sh b/setup_default.sh
+index fd3eae7..771b3af 100755
+--- a/setup_default.sh
++++ b/setup_default.sh
+@@ -1,5 +1,8 @@
+ #!/bin/bash
+-echo "Setup unitree ros2 environment with default interface"
+-source /opt/ros/foxy/setup.bash
+-source $HOME/unitree_ros2/cyclonedds_ws/install/setup.bash
+-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
++echo "Setup unitree ros2 environment"
++
++# Keep this compatibility entry point aligned with setup.sh.  Resolve the
++# repository from this file instead of assuming a particular $HOME layout.
++_UNITREE_SETUP_DIR="$(builtin cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
++source "${_UNITREE_SETUP_DIR}/setup.sh"
++unset _UNITREE_SETUP_DIR
+diff --git a/setup_local.sh b/setup_local.sh
+index 6f1fbe8..771b3af 100755
+--- a/setup_local.sh
++++ b/setup_local.sh
+@@ -1,10 +1,8 @@
+ #!/bin/bash
+-echo "Setup unitree ros2 simulation environment"
+-source /opt/ros/foxy/setup.bash
+-source $HOME/unitree_ros2/cyclonedds_ws/install/setup.bash
+-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+-export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces>
+-                            <NetworkInterface name="lo" priority="default" multicast="default" />
+-                        </Interfaces></General></Domain></CycloneDDS>'
+-
++echo "Setup unitree ros2 environment"
+ 
++# Keep this compatibility entry point aligned with setup.sh.  Resolve the
++# repository from this file instead of assuming a particular $HOME layout.
++_UNITREE_SETUP_DIR="$(builtin cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null && pwd)"
++source "${_UNITREE_SETUP_DIR}/setup.sh"
++unset _UNITREE_SETUP_DIR

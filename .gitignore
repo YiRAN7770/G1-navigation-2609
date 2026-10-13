@@ -1,0 +1,50 @@
+# ROS/colcon outputs
+**/build/
+**/install/
+**/log/
+**/logs/
+**/run_logs/
+log/
+**/test-result*/
+**/__pycache__/
+**/.pytest_cache/
+*.py[cod]
+
+# Local IDE and temporary files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Compiled/vendor outputs and credentials
+*.o
+*.so
+*.a
+.env
+*.pem
+*.key
+unitree_venv/
+.deps/
+
+# Recordings and generated data
+*.db3
+*.bag
+*.bag.active
+*.mcap
+*.rosbag*
+
+# Historical tests copied only for local reference; they are not part of the
+# portable release until their paths are parameterized.
+tools/fastlio_far_tests/
+
+# Upstream metadata for the vendored FAST-LIO source; no submodule is needed
+# after cloning this release.
+ros2_ws/src/FAST_LIO/.gitmodules
+
+# The validated workspace is ROS 2 Humble. Keep ROS 1-only Livox launch and
+# package metadata in the local source copy, outside this ROS 2 release.
+ros2_ws/src/utilities/livox_ros_driver2/launch_ROS1/
+ros2_ws/src/utilities/livox_ros_driver2/package_ROS1.xml
+ros2_ws/src/utilities/livox_ros_driver2/config/display_point_cloud_ROS1.rviz
+
+# Keep the published prior map. Do not add a global *.pcd rule here.

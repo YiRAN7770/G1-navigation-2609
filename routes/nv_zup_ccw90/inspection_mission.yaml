@@ -1,0 +1,27 @@
+# Configuration template: no actuator is started by loading this file.
+route: route.yaml
+map_id: site_04_nav_zup_ccw90
+sequence: [P1, P2, P3, P4]
+home_mode: capture_start_pose
+skip_failed_point: false
+policy:
+  precheck_timeout: 15.0
+  nav_timeout: 120.0
+  stop_timeout: 30.0
+  settle_seconds: 5.0
+  stationary_seconds: 3.0
+  inspect_timeout: 30.0
+  commit_timeout: 5.0
+  cancel_timeout: 5.0
+  retry_delay: 2.0
+  mission_timeout: 1200.0
+  nav_retries: 2
+  inspect_retries: 2
+  stopped_linear_speed: 0.05
+# Current scope: dwell is a placeholder task, never a meter-reading success.
+# Later replace kind with external and connect /inspection/task/{request,result}.
+tasks:
+  P1: {kind: dwell, dwell_seconds: 3.0}
+  P2: {kind: dwell, dwell_seconds: 3.0}
+  P3: {kind: dwell, dwell_seconds: 3.0}
+  P4: {kind: dwell, dwell_seconds: 3.0}
