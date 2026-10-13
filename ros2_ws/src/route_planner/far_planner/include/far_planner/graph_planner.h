@@ -139,8 +139,6 @@ inline void GoalReset() {
 
 public:
 
-void CancelGoal() { GoalReset(); is_goal_init_ = false; }
-
 GraphPlanner() = default;
 ~GraphPlanner() = default;
 
@@ -179,7 +177,7 @@ bool PathToGoal(const NavNodePtr& goal_ptr,
                 Point3D&      _goal_p,
                 bool&         _is_fails,
                 bool&         _is_succeed,
-                bool&         _is_free_nav, bool retain_goal = false);
+                bool&         _is_free_nav);
 
 /**
  * @brief Update connectivity between goal node and navigation graph

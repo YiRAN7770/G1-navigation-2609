@@ -1,5 +1,14 @@
 # G1 FAST-LIO/FAR navigation
 
+> **Historical navigation branch:** `restore/pre-final-pose-20260929` restores
+> the 12 backed-up navigation source/configuration files from before the
+> September 29 reverse/final-pose repair. The known behind-waypoint stop is
+> intentionally present. The later inspection executor is retained but is not
+> validated against this older status interface. See
+> [restoration scope and commands](docs/restore_pre_final_pose_20260929.md)
+> before using the mainline instructions below. This is not a full-workspace
+> historical snapshot or a passing robot-navigation release.
+
 This repository contains the ROS 2 Humble workspace used by the current G1
 navigation chain: FAST-LIO, prior-map localization, FAR, the local planner,
 and the `site_04_nav_zup_ccw90` route and prior map.

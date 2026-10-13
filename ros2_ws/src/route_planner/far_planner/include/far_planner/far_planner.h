@@ -2,7 +2,6 @@
 #define FAR_PLANNER_H
 
 #include "utility.h"
-#include <chrono>
 #include "dynamic_graph.h"
 #include "contour_detector.h"
 #include "contour_graph.h"
@@ -44,15 +43,6 @@ public:
 
 private:
     rclcpp::Node::SharedPtr nh_;
-    geometry_msgs::msg::PoseStamped pose_goal_;
-    bool pose_goal_active_ = false, pose_goal_reached_ = false, replan_requested_ = false;
-    std::chrono::steady_clock::time_point last_replan_;
-    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr replan_sub_;
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr final_status_sub_;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr status_pub_;
-    void PublishPoseStatus(const std::string& state, bool route_converged = false);
-    bool MatchesPoseGoal(const geometry_msgs::msg::PoseStamped& goal) const;
-
 
     rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr reset_graph_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_command_sub_;

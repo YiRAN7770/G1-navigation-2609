@@ -145,7 +145,7 @@ bool GraphPlanner::PathToGoal(const NavNodePtr& goal_ptr,
                               Point3D& _goal_p,
                               bool& _is_fail,
                               bool& _is_succeed,
-                              bool& _is_free_nav, bool retain_goal) 
+                              bool& _is_free_nav) 
 {
     if (!is_goal_init_) return false;
     if (odom_node_ptr_ == NULL || goal_ptr == NULL || current_graph_.empty()) {
@@ -163,10 +163,10 @@ bool GraphPlanner::PathToGoal(const NavNodePtr& goal_ptr,
         _is_free_nav = is_free_nav_goal_;
         return true;       
     }
-    if ((!retain_goal && (odom_node_ptr_->position - _goal_p).norm() < gp_params_.converge_dist) || 
+    if ((odom_node_ptr_->position - _goal_p).norm() < gp_params_.converge_dist || 
         (odom_node_ptr_->position - origin_goal_pos_).norm() < gp_params_.converge_dist)
     {
-        if (FARUtil::IsDebug) RCLCPP_INFO(nh_->get_logger(), "GP: routing convergence (final pose confirmation is separate)");
+        if (FARUtil::IsDebug) RCLCPP_INFO(nh_->get_logger(), "GP: *********** Goal Reached! ***********");
         global_path.push_back(odom_node_ptr_);
         if ((odom_node_ptr_->position - _goal_p).norm() > gp_params_.converge_dist) {
             _goal_p = origin_goal_pos_;
@@ -176,7 +176,8 @@ bool GraphPlanner::PathToGoal(const NavNodePtr& goal_ptr,
         global_path.push_back(goal_ptr);
         _nav_node_ptr = goal_ptr;
         _is_free_nav = is_free_nav_goal_;
-        if (!retain_goal) { this->GoalReset(); is_goal_init_ = false; }
+        this->GoalReset();
+        is_goal_init_ = false;
         return true;
     }
 
