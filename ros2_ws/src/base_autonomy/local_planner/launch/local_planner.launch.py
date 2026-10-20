@@ -54,7 +54,8 @@ def _launch_setup(context):
         parameters=[
             {
                 'pathFolder': os.path.join(local_planner_share, 'paths'),
-                'twoWayDrive': True,
+                'twoWayDrive': two_way_drive.lower() == 'true',
+                'useFinalGoalPose': LaunchConfiguration('useFinalGoalPose').perform(context).lower() == 'true',
                 'laserVoxelSize': 0.05,
                 'terrainVoxelSize': 0.2,
                 'useTerrainAnalysis': True,
@@ -181,7 +182,7 @@ def generate_launch_description():
         DeclareLaunchArgument('goalRequireLocalizationReady', default_value='false'),
         DeclareLaunchArgument('goalPositionTolerance', default_value='0.10'),
         DeclareLaunchArgument('goalAlignmentExitFrames', default_value='3'),
-        DeclareLaunchArgument('goalAlignmentExitDistance', default_value='0.15'),
+        DeclareLaunchArgument('goalAlignmentExitDistance', default_value='0.30'),
         DeclareLaunchArgument('goalYawTolerance', default_value='0.3490658503988659'),
         DeclareLaunchArgument('goalConfirmFrames', default_value='3'),
         DeclareLaunchArgument('goalStoppedLinearSpeed', default_value='0.03'),
@@ -198,7 +199,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'twoWayDrive',
-            default_value='false'
+            default_value='true'
         ),
         DeclareLaunchArgument(
             'autonomyMode',

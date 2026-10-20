@@ -41,6 +41,7 @@
 #include "rmw/qos_profiles.h"
 
 using namespace std;
+#include "finalGoalPolicy.h"
 
 const double PI = 3.1415926;
 
@@ -97,6 +98,26 @@ double goalX = 0;
 double goalY = 0;
 bool requireGoal = false;
 bool hasGoal = false;
+bool useFinalGoalPose = false;
+bool finalPoseValid = false;
+double finalPoseX = 0, finalPoseY = 0, finalPoseYaw = 0;
+int64_t planningCloudStamp = 0;
+
+void finalPoseHandler(const geometry_msgs::msg::PoseStamped::ConstSharedPtr goal)
+{
+  const auto & p = goal->pose.position;
+  const auto & q = goal->pose.orientation;
+  const double norm = q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w;
+  finalPoseValid = (goal->header.frame_id == "map" || goal->header.frame_id == "/map") &&
+    std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z) &&
+    std::isfinite(norm) && norm > 1e-12;
+  if (finalPoseValid) {
+    finalPoseX = p.x;
+    finalPoseY = p.y;
+    finalPoseYaw = atan2(2*(q.w*q.z + q.x*q.y)/norm,
+      1-2*(q.y*q.y + q.z*q.z)/norm);
+  }
+}
 
 float joySpeed = 0;
 float joySpeedRaw = 0;
@@ -168,6 +189,7 @@ void odometryHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odom)
 void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laserCloud2)
 {
   if (!useTerrainAnalysis) {
+    planningCloudStamp = rclcpp::Time(laserCloud2->header.stamp).nanoseconds();
     laserCloud->clear();
     pcl::fromROSMsg(*laserCloud2, *laserCloud);
 
@@ -201,6 +223,7 @@ void laserCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr laser
 void terrainCloudHandler(const sensor_msgs::msg::PointCloud2::ConstSharedPtr terrainCloud2)
 {
   if (useTerrainAnalysis) {
+    planningCloudStamp = rclcpp::Time(terrainCloud2->header.stamp).nanoseconds();
     terrainCloud->clear();
     pcl::fromROSMsg(*terrainCloud2, *terrainCloud);
 
@@ -563,6 +586,7 @@ int main(int argc, char** argv)
   nh->declare_parameter<double>("goalBehindRange", goalBehindRange);
   nh->declare_parameter<double>("goalX", goalX);
   nh->declare_parameter<bool>("requireGoal", requireGoal);
+  nh->declare_parameter<bool>("useFinalGoalPose", useFinalGoalPose);
   nh->declare_parameter<double>("goalY", goalY);
 
   nh->get_parameter("pathFolder", pathFolder);
@@ -610,6 +634,7 @@ int main(int argc, char** argv)
   nh->get_parameter("goalBehindRange", goalBehindRange);
   nh->get_parameter("goalX", goalX);
   nh->get_parameter("requireGoal", requireGoal);
+  nh->get_parameter("useFinalGoalPose", useFinalGoalPose);
   nh->get_parameter("goalY", goalY);
 
   auto subOdometry = nh->create_subscription<nav_msgs::msg::Odometry>("/state_estimation", 5, odometryHandler);
@@ -621,6 +646,12 @@ int main(int argc, char** argv)
   auto subJoystick = nh->create_subscription<sensor_msgs::msg::Joy>("/joy", 5, joystickHandler);
 
   auto subGoal = nh->create_subscription<geometry_msgs::msg::PointStamped> ("/way_point", 5, goalHandler);
+  auto subFinalGoal = nh->create_subscription<geometry_msgs::msg::PoseStamped>(
+    "/goal_pose", 5, finalPoseHandler);
+  auto subPointGoal = nh->create_subscription<geometry_msgs::msg::PointStamped>(
+    "/goal_point", 5, [](geometry_msgs::msg::PointStamped::ConstSharedPtr) {
+      finalPoseValid = false;
+    });
 
   auto subSpeed = nh->create_subscription<std_msgs::msg::Float32>("/speed", 5, speedHandler);
 
@@ -635,6 +666,9 @@ int main(int argc, char** argv)
 
   auto pubPath = nh->create_publisher<nav_msgs::msg::Path>("/path", 5);
   nav_msgs::msg::Path path;
+  // Map-frame certificate for a checked straight corridor to the ORIGINAL
+  // goal. Empty paths revoke permission; a normal curved path cannot grant it.
+  auto pubFinalPath = nh->create_publisher<nav_msgs::msg::Path>("/local_planner/final_path", 5);
   auto pubPlannerStatus = nh->create_publisher<std_msgs::msg::String>("/local_planner/status", 5);
   std::string previousPlannerReason;
   auto publishPlannerStatus = [&](const std::string & reason, int selectedGroup) {
@@ -778,6 +812,76 @@ int main(int argc, char** argv)
         }
       }
 
+      const double finalDistance = hypot(finalPoseX - vehicleX, finalPoseY - vehicleY);
+      const bool poseNavigation = useFinalGoalPose && finalPoseValid && autonomyMode;
+      const bool nearFinalGoal = poseNavigation &&
+        finalDistance <= final_goal::reverseDistance;
+      const double targetX = nearFinalGoal ? finalPoseX : goalX;
+      const double targetY = nearFinalGoal ? finalPoseY : goalY;
+      const double targetRelX = (targetX-vehicleX)*cosVehicleYaw + (targetY-vehicleY)*sinVehicleYaw;
+      const double targetRelY = -(targetX-vehicleX)*sinVehicleYaw + (targetY-vehicleY)*cosVehicleYaw;
+
+      nav_msgs::msg::Path finalPath;
+      finalPath.header.stamp = rclcpp::Time(static_cast<int64_t>(odomTime*1e9));
+      finalPath.header.frame_id = "map";
+      const double cloudAge = (nh->now().nanoseconds()-planningCloudStamp)*1e-9;
+      const double poseAge = nh->now().seconds()-odomTime;
+      bool corridorClear = nearFinalGoal && planningCloudStamp > 0 &&
+        cloudAge >= 0 && cloudAge <= final_goal::pathTimeout &&
+        poseAge >= 0 && poseAge <= final_goal::pathTimeout;
+      // A circumscribed footprint also covers rotation at either endpoint.
+      // Deliberately do not honor checkObstacle=false for this final segment.
+      const double radius = hypot(vehicleLength/2, vehicleWidth/2) + final_goal::footprintMargin;
+      const double segmentSq = targetRelX*targetRelX + targetRelY*targetRelY;
+      for (const auto & obstacle : *plannerCloudCrop) {
+        if (!corridorClear) break;
+        if (!std::isfinite(obstacle.x) || !std::isfinite(obstacle.y) ||
+            !std::isfinite(obstacle.intensity)) {
+          corridorClear = false;
+          break;
+        }
+        if (useTerrainAnalysis && obstacle.intensity <= obstacleHeightThre) continue;
+        double projection = segmentSq > 1e-12 ?
+          (obstacle.x*targetRelX + obstacle.y*targetRelY)/segmentSq : 0;
+        projection = std::max(0.0, std::min(1.0, projection));
+        if (hypot(obstacle.x-projection*targetRelX, obstacle.y-projection*targetRelY) <= radius)
+          corridorClear = false;
+      }
+      if (corridorClear) {
+        geometry_msgs::msg::PoseStamped start, end;
+        start.pose.position.x = vehicleX;
+        start.pose.position.y = vehicleY;
+        start.pose.orientation.w = 1;
+        end.pose.position.x = finalPoseX;
+        end.pose.position.y = finalPoseY;
+        end.pose.orientation.z = sin(finalPoseYaw/2);
+        end.pose.orientation.w = cos(finalPoseYaw/2);
+        finalPath.poses = {start, end};
+      }
+      pubFinalPath->publish(finalPath);
+
+      if (nearFinalGoal && finalDistance <= final_goal::correctionExitDistance) {
+        path.header.stamp = finalPath.header.stamp;
+        path.header.frame_id = "vehicle";
+        path.poses.clear();
+        // Publish the SAME checked corridor to the ordinary follower. No
+        // sampled-path endpoint may stop the final 10--20 cm translation.
+        const int steps = corridorClear ? std::max(1, static_cast<int>(ceil(finalDistance/0.01))) : 0;
+        for (int i=0; i<=steps; ++i) {
+          geometry_msgs::msg::PoseStamped p;
+          p.pose.position.x = steps ? targetRelX*i/steps : 0;
+          p.pose.position.y = steps ? targetRelY*i/steps : 0;
+          path.poses.push_back(p);
+        }
+        pubPath->publish(path);
+        slow.data = 0;
+        pubSlowDown->publish(slow);
+        freezeStatus = 0;
+        publishPlannerStatus(corridorClear ? "final_corridor_clear" : "final_corridor_blocked_or_stale", -1);
+        rate.sleep();
+        continue;
+      }
+
       float pathRange = adjacentRange;
       if (pathRangeBySpeed) pathRange = adjacentRange * joySpeed;
       if (pathRange < minPathRange) pathRange = minPathRange;
@@ -785,18 +889,24 @@ int main(int argc, char** argv)
 
       int preSelectedGroupID = -1;
       if (autonomyMode) {
-        float relativeGoalX = ((goalX - vehicleX) * cosVehicleYaw + (goalY - vehicleY) * sinVehicleYaw);
-        float relativeGoalY = (-(goalX - vehicleX) * sinVehicleYaw + (goalY - vehicleY) * cosVehicleYaw);
+        float relativeGoalX = targetRelX;
+        float relativeGoalY = targetRelY;
 
         relativeGoalDis = sqrt(relativeGoalX * relativeGoalX + relativeGoalY * relativeGoalY);
         joyDir = atan2(relativeGoalY, relativeGoalX) * 180 / PI;
         
-        if (fabs(joyDir) > freezeAng && relativeGoalDis < goalBehindRange) {
+        // Pose navigation must retain a trackable path behind the robot.
+        // The follower chooses reverse within 0.50 m, or turns to the path
+        // outside that range; zeroing it here prevents either action.
+        if (!poseNavigation &&
+            fabs(joyDir) > freezeAng && relativeGoalDis < goalBehindRange) {
           relativeGoalDis = 0;
           joyDir = 0;
         }
         
-        if (fabs(joyDir) > freezeAng && freezeStatus == 0) {
+        if (poseNavigation) {
+          freezeStatus = 0;
+        } else if (fabs(joyDir) > freezeAng && freezeStatus == 0) {
           freezeStartTime = odomTime;
           freezeStatus = 1;
         } else if (odomTime - freezeStartTime > freezeTime && freezeStatus == 1) {

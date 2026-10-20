@@ -1,0 +1,105 @@
+{
+  "source_workspace": "/home/lolo/G1/G1-navigation",
+  "source_head": "e8ea25ffb94e2a9d255c4e9e163f4ed19478cf50",
+  "source_has_uncommitted_changes": true,
+  "release_base": "11074f9fd239d2bbc7ee834d6fccc88e32525121",
+  "branch": "feature/near-goal-control-20261020",
+  "files": [
+    {
+      "source": "End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/src/localPlanner.cpp",
+      "target": "ros2_ws/src/base_autonomy/local_planner/src/localPlanner.cpp",
+      "source_sha256": "8b54ca4fb1edb2668fe689ff8fae809ac934939e45d17efaf966decda0904613",
+      "release_sha256": "8b54ca4fb1edb2668fe689ff8fae809ac934939e45d17efaf966decda0904613",
+      "byte_identical": true,
+      "adaptation": "identical"
+    },
+    {
+      "source": "End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/src/pathFollower.cpp",
+      "target": "ros2_ws/src/base_autonomy/local_planner/src/pathFollower.cpp",
+      "source_sha256": "797e11328dedfe5b074facc01cb588556b5423056c423005fe92f71a24b383d6",
+      "release_sha256": "797e11328dedfe5b074facc01cb588556b5423056c423005fe92f71a24b383d6",
+      "byte_identical": true,
+      "adaptation": "identical"
+    },
+    {
+      "source": "End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/src/finalGoalPolicy.h",
+      "target": "ros2_ws/src/base_autonomy/local_planner/src/finalGoalPolicy.h",
+      "source_sha256": "accabc50389805255baeb982dd57053d0068bc01f87c2e77a1562b479c471028",
+      "release_sha256": "accabc50389805255baeb982dd57053d0068bc01f87c2e77a1562b479c471028",
+      "byte_identical": true,
+      "adaptation": "identical"
+    },
+    {
+      "source": "End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/local_planner/launch/local_planner.launch.py",
+      "target": "ros2_ws/src/base_autonomy/local_planner/launch/local_planner.launch.py",
+      "source_sha256": "acb7d728c96c4dc4d97b68453fda17228c13c6ab4c0caf821f65bc55c5c7244d",
+      "release_sha256": "acb7d728c96c4dc4d97b68453fda17228c13c6ab4c0caf821f65bc55c5c7244d",
+      "byte_identical": true,
+      "adaptation": "identical"
+    },
+    {
+      "source": "End2end-ObjectNav-Physical-Experiment-unitree_g1/src/base_autonomy/vehicle_simulator/launch/system_real_robot_with_fastlio_far.launch.py",
+      "target": "ros2_ws/src/base_autonomy/vehicle_simulator/launch/system_real_robot_with_fastlio_far.launch.py",
+      "source_sha256": "2eec3ae85b32365c5d0b95d0d19a078e7a0af1d98649d0ca97190c2196a16bee",
+      "release_sha256": "70987af42f88c41a1bc1b7210e9d99f031df86038c5de876e6a3728c31bed3a6",
+      "byte_identical": false,
+      "adaptation": "release packaging retained; exit radius updated to 0.30"
+    },
+    {
+      "source": "config/inspection_route.yaml",
+      "target": "config/inspection_route.yaml",
+      "source_sha256": "74c150b150cfd4ea75359f3fed37a32708b21d0e35822724af7d6ddb690f2216",
+      "release_sha256": "765fddd636678f40bd552fd3ef6816a39a1dfab271435b4fad7235c1f27711f5",
+      "byte_identical": false,
+      "adaptation": "release-relative paths/documentation only; controller logic unchanged"
+    },
+    {
+      "source": "tools/inspection_route.py",
+      "target": "tools/inspection_route.py",
+      "source_sha256": "43c1144aad7e2bcf74a4414b1499edd7204b3e0a0e6c8d1548fe98b347c2bc5d",
+      "release_sha256": "2e9fe03df9fbbb7f8a3bde2566e8f68ff24ed0f90b096399bcb19a484ff64f67",
+      "byte_identical": false,
+      "adaptation": "release-relative paths/documentation only; controller logic unchanged"
+    },
+    {
+      "source": "tools/test_inspection_route.py",
+      "target": "tools/test_inspection_route.py",
+      "source_sha256": "4461df065922446cb8b88c2deb5252178604ea8fca981d2975685d477e761cc3",
+      "release_sha256": "4461df065922446cb8b88c2deb5252178604ea8fca981d2975685d477e761cc3",
+      "byte_identical": true,
+      "adaptation": "release-relative paths/documentation only; controller logic unchanged"
+    },
+    {
+      "source": "tools/test_inspection_route_ros.py",
+      "target": "tools/test_inspection_route_ros.py",
+      "source_sha256": "477e65b39fe6e4bebde4ec7db9f2ed9247b40daffa0d128c613d2a42b21190ab",
+      "release_sha256": "a78e62b884bfe07dec80a79d0bef845f8f944b5cdccf74c5144e3ff1fed062f5",
+      "byte_identical": false,
+      "adaptation": "release-relative paths/documentation only; controller logic unchanged"
+    },
+    {
+      "source": "tools/test_near_goal_control.py",
+      "target": "tools/test_near_goal_control.py",
+      "source_sha256": "f76b30157f8592922257c086c794bd41b2555f3844e511583878d294eab52c53",
+      "release_sha256": "2e7911e6d5beb6071758d0aea8ca47bcdf14449e1ec0bb466979d2e8006ab810",
+      "byte_identical": false,
+      "adaptation": "release-relative paths/documentation only; controller logic unchanged"
+    },
+    {
+      "source": "tools/test_reverse_limit.py",
+      "target": "tools/test_reverse_limit.py",
+      "source_sha256": "309a09add03db4278ed1f4ca6377b1ab9bd38b54bb5e2fec63f89648a5f4158a",
+      "release_sha256": "6ba95ab3f8e1764d8d29e81a2d5306b3194ea6ca138d0f6e7263db816ddb7d29",
+      "byte_identical": false,
+      "adaptation": "release-relative paths/documentation only; controller logic unchanged"
+    },
+    {
+      "source": "docs/near_goal_control.md",
+      "target": "docs/near_goal_control.md",
+      "source_sha256": "d9e929aa8c3bea9df7fea3e335d97c96569d868b350a71cbb838d2c6e3f94d99",
+      "release_sha256": "35e195d5bee00570242f4423fbc6fe932e1398468a81064c346cacd3a123f90c",
+      "byte_identical": false,
+      "adaptation": "release-relative paths/documentation only; controller logic unchanged"
+    }
+  ]
+}

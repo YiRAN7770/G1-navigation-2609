@@ -209,7 +209,7 @@ def generate_launch_description():
         DeclareLaunchArgument("goalRequireLocalizationReady", default_value="false"),
         DeclareLaunchArgument("goalPositionTolerance", default_value="0.10"),
         DeclareLaunchArgument("goalAlignmentExitFrames", default_value="3"),
-        DeclareLaunchArgument("goalAlignmentExitDistance", default_value="0.15"),
+        DeclareLaunchArgument("goalAlignmentExitDistance", default_value="0.30"),
         DeclareLaunchArgument("goalYawTolerance", default_value="0.3490658503988659"),
         DeclareLaunchArgument("goalConfirmFrames", default_value="3"),
         DeclareLaunchArgument("goalStoppedLinearSpeed", default_value="0.03"),

@@ -1,0 +1,11 @@
+# 独立单轮巡检；不改变导航器配置。位置单位 m，yaw 单位 rad。
+map_id: site_04_nav_zup_ccw90
+frame_id: map
+prior_pcd: ../maps/site_04_nav_zup_ccw90/prior.pcd
+sequence: [START, P1, P2, P3, P4, START]
+points:
+  START: null  # 到实际起点后执行 record START
+  P1: {x: 1.532753825, y: 1.732534409, z: 0.087214872, yaw: -0.785832894}
+  P2: {x: -2.252366543, y: 5.503403187, z: 0.340523332, yaw: -2.309945147}
+  P3: {x: -0.319568515, y: 7.233221054, z: 0.346684009, yaw: 2.230265626}
+  P4: {x: 5.285879135, y: 5.228349209, z: 0.077980399, yaw: 0.666234189}

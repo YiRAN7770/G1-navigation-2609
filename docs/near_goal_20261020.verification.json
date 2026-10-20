@@ -1,0 +1,29 @@
+{
+  "workspace": "G1-navigation-2609-release",
+  "branch": "feature/near-goal-control-20261020",
+  "real_robot_tested": false,
+  "build": "passed",
+  "build_log_sha256": "bb6b893db38ffb7ab6db9ee9f8e5fb0943b0c69ee1f75f11a70dae9ea98d5961",
+  "tests": {
+    "near_goal": {
+      "passed": 8,
+      "log_sha256": "a7e174a9117b4e9450ca3828389903bf70a368a6cab7b8046a3f86090824def0"
+    },
+    "reverse": {
+      "passed": 8,
+      "log_sha256": "f9522dfbd075e8349d6d748984a0121931d602329705e38d6cd12f0ca3c16794"
+    },
+    "patrol_ros": {
+      "passed": 4,
+      "log_sha256": "06f7580f82bbf2c641e3f322d9452424b145d8a000d8a6d5924dcd00b958c613"
+    },
+    "patrol_unit": {
+      "passed": 8
+    }
+  },
+  "total_passed": 28,
+  "ROS_DOMAIN_ID": 89,
+  "ROS_LOCALHOST_ONLY": 1,
+  "map_checksums": "passed",
+  "source_byte_identity": "localPlanner.cpp, pathFollower.cpp, finalGoalPolicy.h, local_planner.launch.py"
+}

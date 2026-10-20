@@ -45,6 +45,7 @@
 #include "rmw/qos_profiles.h"
 
 #include "serial/serial.h"
+#include "finalGoalPolicy.h"
 
 using namespace std;
 
@@ -63,6 +64,9 @@ double sensorOffsetY = 0;
 int pubSkipNum = 1;
 int pubSkipCount = 0;
 bool twoWayDrive = true;
+constexpr double reverseGoalDistanceLimit = final_goal::reverseDistance;
+bool reverseGoalValid = false;
+double reverseGoalX = 0.0, reverseGoalY = 0.0;
 double lookAheadDis = 0.5;
 double yawRateGain = 7.5;
 double stopYawRateGain = 7.5;
@@ -107,7 +111,7 @@ double finalGoalX = 0.0;
 double finalGoalY = 0.0;
 double finalGoalYaw = 0.0;
 double goalPositionTolerance = 0.10;
-double goalAlignmentExitDistance = 0.15;
+double goalAlignmentExitDistance = final_goal::correctionExitDistance;
 int goalAlignmentExitFrames = 3;
 double goalYawTolerance = 0.3490658503988659;  // exactly 20 degrees
 int goalConfirmFrames = 3;
@@ -117,7 +121,7 @@ bool finalGoalActive = false;
 bool finalGoalValid = false;
 bool finalGoalReached = false;
 int goalConfirmCount = 0;
-enum class FinalGoalPhase { Approach, Align, Reached };
+enum class FinalGoalPhase { Approach, Align, Translate, Reached };
 FinalGoalPhase finalGoalPhase = FinalGoalPhase::Approach;
 int goalExitCount = 0;
 bool goalWaitingForPath = false;
@@ -131,6 +135,15 @@ double trackingDistance = 0.0;
 double trackingEndDistance = 0.0;
 double trackingStopDistance = 0.0;
 geometry_msgs::msg::Twist lastGoalCommand;
+nav_msgs::msg::Path finalCorridor;
+SteadyClock::time_point finalCorridorReceipt;
+int64_t finalGoalReceiptNs = 0;
+
+void finalCorridorHandler(const nav_msgs::msg::Path::ConstSharedPtr message)
+{
+  finalCorridor = *message;
+  finalCorridorReceipt = SteadyClock::now();
+}
 
 bool localizationReady = false;
 bool localizationReadyReceived = false;
@@ -205,6 +218,15 @@ bool isFresh(const SteadyClock::time_point & receipt, double timeout)
   return age >= 0.0 && age <= timeout;
 }
 
+bool reverseAllowedAtGoal()
+{
+  // Use the navigation goal in map coordinates, never a cropped local path
+  // or FAR waypoint. An unknown goal/pose cannot grant reverse permission.
+  return twoWayDrive && reverseGoalValid && odomValid &&
+    isFresh(lastOdomReceipt, goalLocalizationTimeout) &&
+    hypot(reverseGoalX - vehicleX, reverseGoalY - vehicleY) <= reverseGoalDistanceLimit;
+}
+
 void publishGoalReached(bool reached)
 {
   if (goalReachedPub) {
@@ -223,6 +245,8 @@ void resetFinalGoalState(bool active)
   goalExitCount = 0;
   finalGoalPhase = FinalGoalPhase::Approach;
   goalWaitingForPath = false;
+  finalCorridor.poses.clear();
+  finalGoalReceiptNs = nh->now().nanoseconds();
   // Confirmation must use frames received after this goal, not the last frame
   // retained from the previous target.
   lastGoalEvalOdomSequence = odomSequence;
@@ -288,8 +312,6 @@ void odomHandler(const nav_msgs::msg::Odometry::ConstSharedPtr odomIn)
 
 void goalPoseHandler(const geometry_msgs::msg::PoseStamped::ConstSharedPtr goal)
 {
-  if (!useFinalGoalPose) return;
-
   const auto & p = goal->pose.position;
   const auto & q = goal->pose.orientation;
   const double qNorm = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
@@ -297,6 +319,13 @@ void goalPoseHandler(const geometry_msgs::msg::PoseStamped::ConstSharedPtr goal)
     std::isfinite(p.x) && std::isfinite(p.y) && std::isfinite(p.z) &&
     std::isfinite(q.x) && std::isfinite(q.y) && std::isfinite(q.z) &&
     std::isfinite(q.w) && qNorm >= 1e-12;
+
+  reverseGoalValid = valid;
+  if (valid) {
+    reverseGoalX = p.x;
+    reverseGoalY = p.y;
+  }
+  if (!useFinalGoalPose) return;
 
   resetFinalGoalState(true);
   if (!valid) {
@@ -326,7 +355,12 @@ void goalPoseHandler(const geometry_msgs::msg::PoseStamped::ConstSharedPtr goal)
 
 void goalPointHandler(const geometry_msgs::msg::PointStamped::ConstSharedPtr goal)
 {
-  (void)goal;
+  reverseGoalValid = isMapFrame(goal->header.frame_id) &&
+    std::isfinite(goal->point.x) && std::isfinite(goal->point.y) && std::isfinite(goal->point.z);
+  if (reverseGoalValid) {
+    reverseGoalX = goal->point.x;
+    reverseGoalY = goal->point.y;
+  }
   // A position-only goal is the legacy FAR contract.  It must cancel any
   // previously stored PoseStamped yaw so an old target cannot be confirmed.
   if (useFinalGoalPose) resetFinalGoalState(false);
@@ -421,6 +455,7 @@ void publishFinalGoalStatus(const std::string & reason, double distance, double 
   static SteadyClock::time_point lastPublish;
   const char * phase = !finalGoalActive ? "idle" :
     finalGoalPhase == FinalGoalPhase::Align ? "align" :
+    finalGoalPhase == FinalGoalPhase::Translate ? "translate" :
     finalGoalPhase == FinalGoalPhase::Reached ? "reached" : "approach";
   const std::string state = std::string(phase) + ":" + reason;
   const bool changed = state != previousState;
@@ -440,6 +475,9 @@ void publishFinalGoalStatus(const std::string & reason, double distance, double 
   out << ",\"confirm_frames\":" << goalConfirmCount
       << ",\"exit_frames\":" << goalExitCount
       << ",\"waiting_for_path\":" << (goalWaitingForPath ? "true" : "false")
+      << ",\"reverse_allowed\":" << (reverseAllowedAtGoal() ? "true" : "false")
+      << ",\"reverse_limit\":" << reverseGoalDistanceLimit
+      << ",\"align_enter_distance\":" << final_goal::alignDistance
       << ",\"tracking_reason\":\"" << trackingReason << "\""
       << ",\"path_points\":" << path.poses.size()
       << ",\"lookahead_distance\":" << trackingDistance
@@ -456,6 +494,27 @@ void publishFinalGoalStatus(const std::string & reason, double distance, double 
   std_msgs::msg::String message;
   message.data = out.str();
   goalStatusPub->publish(message);
+}
+
+bool finalCorridorValid()
+{
+  if (finalCorridor.header.frame_id != "map" || finalCorridor.poses.size() != 2 ||
+      !isFresh(finalCorridorReceipt, final_goal::pathTimeout) ||
+      nh->count_publishers("/local_planner/final_path") != 1) return false;
+  const int64_t stamp = rclcpp::Time(finalCorridor.header.stamp).nanoseconds();
+  const double age = (nh->now().nanoseconds()-stamp)*1e-9;
+  if (stamp < finalGoalReceiptNs || age < 0 || age > final_goal::pathTimeout) return false;
+  const auto & start = finalCorridor.poses.front().pose.position;
+  const auto & end = finalCorridor.poses.back().pose;
+  const auto & q = end.orientation;
+  if (!std::isfinite(start.x) || !std::isfinite(start.y) ||
+      !std::isfinite(end.position.x) || !std::isfinite(end.position.y) ||
+      !std::isfinite(q.z) || !std::isfinite(q.w)) return false;
+  // Certificate belongs to this goal, with little motion since its footprint
+  // check. A certificate for FAR's shifted goal cannot authorize correction.
+  return hypot(end.position.x-finalGoalX, end.position.y-finalGoalY) <= 1e-4 &&
+    fabs(normalizeAngle(2*atan2(q.z,q.w)-finalGoalYaw)) <= 1e-4 &&
+    hypot(start.x-vehicleX, start.y-vehicleY) <= final_goal::footprintMargin;
 }
 
 void applyFinalGoalControl(geometry_msgs::msg::TwistStamped & command)
@@ -484,15 +543,38 @@ void applyFinalGoalControl(geometry_msgs::msg::TwistStamped & command)
       safetyStop != 0 ? "safety_stop" :
       !finalGoalLocalizationValid() ? "localization_unavailable" : "inclination_stop";
     goalConfirmCount = goalExitCount = 0;
-  } else if (finalGoalReached) {
-    reason = "arrival_latched";
   } else {
-    if (finalGoalPhase == FinalGoalPhase::Approach && distance <= goalPositionTolerance) {
+    if (finalGoalReached &&
+        (distance > goalPositionTolerance || fabs(yawError) > goalYawTolerance)) {
+      // Do not keep advertising success if the pose drifts during patrol dwell.
+      finalGoalReached = false;
+      goalConfirmCount = 0;
+      finalGoalPhase = FinalGoalPhase::Align;
+      publishGoalReached(false);
+    }
+    if (finalGoalPhase == FinalGoalPhase::Approach && distance <= final_goal::alignDistance) {
       finalGoalPhase = FinalGoalPhase::Align;
       goalWaitingForPath = false;
       goalExitCount = 0;
     }
-    if (finalGoalPhase == FinalGoalPhase::Align) {
+    if (finalGoalReached) {
+      reason = "arrival_latched";
+    } else if (distance <= goalPositionTolerance && fabs(yawError) <= goalYawTolerance) {
+      reason = "confirming_arrival";
+      if (odomLinearSpeed > goalStoppedLinearSpeed || odomAngularSpeed > goalStoppedAngularSpeed) {
+        goalConfirmCount = 0;
+        reason = "waiting_for_standstill";
+      } else if (distinctFrame) {
+        ++goalConfirmCount;
+      }
+      if (goalConfirmCount >= goalConfirmFrames) {
+        finalGoalReached = true;
+        finalGoalPhase = FinalGoalPhase::Reached;
+        publishGoalReached(true);
+        reason = "arrival_latched";
+      }
+    } else if (finalGoalPhase == FinalGoalPhase::Align || finalGoalPhase == FinalGoalPhase::Translate) {
+      goalConfirmCount = 0;
       if (distance > goalAlignmentExitDistance) {
         // Stop immediately, then require distinct localization frames before
         // abandoning alignment. Never rotate outside the exit radius.
@@ -509,27 +591,42 @@ void applyFinalGoalControl(geometry_msgs::msg::TwistStamped & command)
         }
       } else {
         goalExitCount = 0;
-        if (fabs(yawError) > goalYawTolerance) {
-          alignmentRate = clampValue(goalYawGain * yawError,
-            -maxYawRate * PI / 180.0, maxYawRate * PI / 180.0);
-          goalConfirmCount = 0;
-          reason = "aligning_yaw";
-        } else if (distance > goalPositionTolerance) {
-          goalConfirmCount = 0;
-          reason = "position_hysteresis_band";
+        if (!finalCorridorValid()) {
+          reason = "final_corridor_blocked_or_stale";
         } else {
-          reason = "confirming_arrival";
-          if (odomLinearSpeed > goalStoppedLinearSpeed || odomAngularSpeed > goalStoppedAngularSpeed) {
-            goalConfirmCount = 0;
-            reason = "waiting_for_standstill";
-          } else if (distinctFrame) {
-            ++goalConfirmCount;
-          }
-          if (goalConfirmCount >= goalConfirmFrames) {
-            finalGoalReached = true;
-            finalGoalPhase = FinalGoalPhase::Reached;
-            publishGoalReached(true);
-            reason = "arrival_latched";
+          if (finalGoalPhase == FinalGoalPhase::Translate && fabs(yawError) > goalYawTolerance)
+            finalGoalPhase = FinalGoalPhase::Align;
+          if (finalGoalPhase == FinalGoalPhase::Align &&
+              fabs(yawError) <= std::min(goalYawTolerance, final_goal::alignReleaseYaw))
+            finalGoalPhase = FinalGoalPhase::Translate;
+          alignmentRate = clampValue(goalYawGain * yawError,
+            -std::min(maxYawRate*PI/180.0, final_goal::maxAlignmentRate),
+             std::min(maxYawRate*PI/180.0, final_goal::maxAlignmentRate));
+          if (finalGoalPhase == FinalGoalPhase::Align) {
+            reason = "aligning_yaw";
+          } else {
+            const double dx = finalGoalX-vehicleX, dy = finalGoalY-vehicleY;
+            const double bodyX = cos(vehicleYaw)*dx + sin(vehicleYaw)*dy;
+            const double bodyY = -sin(vehicleYaw)*dx + cos(vehicleYaw)*dy;
+            if (bodyX < -1e-6 && !reverseAllowedAtGoal()) {
+              reason = "final_translation_reverse_not_allowed";
+              alignmentRate = 0;
+            } else {
+              // Follow the checked straight corridor without pointing the
+              // body at the waypoint. Scale the vector, preserving direction.
+              double scale = std::min(0.6, final_goal::maxTranslationSpeed/std::max(distance, 1e-6));
+              if (fabs(bodyY)*scale > final_goal::maxLateralSpeed)
+                scale = final_goal::maxLateralSpeed/fabs(bodyY);
+              if (slowDown == 1) scale *= slowRate1;
+              else if (slowDown == 2) scale *= slowRate2;
+              else if (slowDown == 3) scale *= slowRate3;
+              stop = false;
+              vehicleSpeed = 0;
+              command.twist.linear.x = scale*bodyX;
+              command.twist.linear.y = scale*bodyY;
+              command.twist.angular.z = alignmentRate;
+              reason = "translating_with_goal_yaw";
+            }
           }
         }
       }
@@ -724,9 +821,10 @@ int main(int argc, char** argv)
   nh->get_parameter("goalStoppedLinearSpeed", goalStoppedLinearSpeed);
   nh->get_parameter("goalStoppedAngularSpeed", goalStoppedAngularSpeed);
   goalPositionTolerance = std::max(0.0, goalPositionTolerance);
-  if (!std::isfinite(goalAlignmentExitDistance) || goalAlignmentExitDistance <= goalPositionTolerance ||
+  if (!std::isfinite(goalAlignmentExitDistance) || goalAlignmentExitDistance <= final_goal::alignDistance ||
+      goalAlignmentExitDistance > final_goal::reverseDistance ||
       goalAlignmentExitFrames < 1) {
-    throw std::invalid_argument("goalAlignmentExitDistance must exceed goalPositionTolerance; exit frames must be positive");
+    throw std::invalid_argument("goalAlignmentExitDistance must be >0.20 and <=0.50; exit frames must be positive");
   }
   goalYawTolerance = std::max(0.0, goalYawTolerance);
   goalConfirmFrames = std::max(1, goalConfirmFrames);
@@ -736,6 +834,8 @@ int main(int argc, char** argv)
   auto subOdom = nh->create_subscription<nav_msgs::msg::Odometry>("/state_estimation", 5, odomHandler);
 
   auto subPath = nh->create_subscription<nav_msgs::msg::Path>("/path", 5, pathHandler);
+  auto subFinalCorridor = nh->create_subscription<nav_msgs::msg::Path>(
+    "/local_planner/final_path", 5, finalCorridorHandler);
 
   auto subGoalPose = nh->create_subscription<geometry_msgs::msg::PoseStamped>(
     "/goal_pose", rclcpp::QoS(5), goalPoseHandler);
@@ -832,7 +932,13 @@ int main(int argc, char** argv)
       if (dirDiff > PI) dirDiff -= 2 * PI;
       else if (dirDiff < -PI) dirDiff += 2 * PI;
 
-      if (twoWayDrive) {
+      const bool reverseAllowed = reverseAllowedAtGoal();
+      if (!reverseAllowed) {
+        // Leaving the 50 cm zone revokes reverse immediately, without waiting
+        // for the normal direction-switch delay or deceleration ramp.
+        navFwd = true;
+        if (vehicleSpeed < 0) vehicleSpeed = 0;
+      } else {
         double time = nh->now().seconds();
         if (fabs(dirDiff) > PI / 2 && navFwd && time - switchTime > switchTimeThre) {
           navFwd = false;
@@ -925,6 +1031,11 @@ int main(int argc, char** argv)
           cmd_vel.twist.angular.z = maxYawRate * PI / 180.0 * joyManualYaw;
         }
 
+        // Cover both acceleration residue and negative x from omnidirectional
+        // projection/manual override before the final controller/status sees it.
+        if (!reverseAllowed && cmd_vel.twist.linear.x < 0) {
+          cmd_vel.twist.linear.x = 0;
+        }
         applyFinalGoalControl(cmd_vel);
 
         pubSpeed->publish(cmd_vel);
